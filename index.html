@@ -114,35 +114,43 @@
   /* ─── HABIT SINK ─── */
   .habit-wrap {
     background: var(--card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;
+    border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;
   }
   .habit-meta {
     display: flex; justify-content: space-between;
-    align-items: center; margin-bottom: 10px;
+    align-items: center; margin-bottom: 14px;
   }
   .habit-sub { font-size:9.5px; color:var(--text3); font-style:italic; }
+  .habit-inner { display:flex; gap:8px; align-items:flex-start; width:100%; }
   .dow-labels {
-    display: grid; grid-template-rows: repeat(7, 11px);
-    gap: 2.5px; margin-right: 4px;
+    display: grid; grid-template-rows: repeat(7, 1fr);
+    gap: 3px; margin-right: 2px; padding-top: 18px;
+    flex-shrink: 0;
   }
-  .dow-lbl { font-size:7.5px; color:var(--text3); font-weight:500; line-height:11px; text-align:right; white-space:nowrap; }
-  .habit-month-row { display:grid; grid-auto-flow:column; gap:2.5px; margin-bottom:3px; }
-  .hmonth { font-size:8px; font-weight:600; color:var(--text3); width:13.5px; white-space:nowrap; }
-  .habit-grid { display:grid; grid-auto-flow:column; grid-template-rows:repeat(7, 11px); gap:2.5px; }
-  .hcell { width:11px; height:11px; border-radius:2px; border:1px solid var(--border); background:var(--bg2); flex-shrink:0; }
+  .dow-lbl { font-size:8px; color:var(--text3); font-weight:600; text-align:right; white-space:nowrap; display:flex; align-items:center; justify-content:flex-end; }
+  .habit-grid-wrap { flex:1; min-width:0; }
+  .habit-month-row { display:flex; margin-bottom:4px; }
+  .hmonth-cell { font-size:8.5px; font-weight:700; color:var(--text3); flex:1; white-space:nowrap; }
+  .habit-grid { display:flex; gap:3px; width:100%; }
+  .habit-col  { display:flex; flex-direction:column; gap:3px; flex:1; }
+  .hcell {
+    width:100%; aspect-ratio:1;
+    border-radius:3px; border:1px solid var(--border);
+    background:var(--bg2);
+  }
   .hcell.empty  { background:transparent; border-color:transparent; }
   .hcell.l0     { background:var(--bg2); border-color:var(--border); }
   .hcell.l1     { background:#bbf7d0; border-color:#86efac; }
   .hcell.l2     { background:#4ade80; border-color:#22c55e; }
   .hcell.l3     { background:#16a34a; border-color:#15803d; }
   .hcell.l4     { background:#14532d; border-color:#052e16; }
-  .hcell.sun    { background:#fffbeb; border-color:#fde68a; border-style:solid; }
+  .hcell.sun    { background:#fffbeb; border-color:#fde68a; }
   .hcell.ext    { background:#fff7ed; border-color:#fed7aa; }
   .habit-legend {
     display:flex; align-items:center; gap:5px;
-    margin-top:8px; font-size:8.5px; color:var(--text3); justify-content:flex-end;
+    margin-top:10px; font-size:8.5px; color:var(--text3); justify-content:flex-end;
   }
-  .hl-cell { width:10px; height:10px; border-radius:2px; border:1px solid var(--border); }
+  .hl-cell { width:11px; height:11px; border-radius:2px; border:1px solid var(--border); flex-shrink:0; }
 
   /* ─── WEEK SECTION ─── */
   .week-section { margin-bottom:16px; page-break-inside:avoid; break-inside:avoid; }
@@ -162,7 +170,7 @@
     background: var(--card); border: 1px solid var(--border);
     border-radius: 7px; padding: 7px 8px 6px;
     page-break-inside: avoid; break-inside: avoid;
-    min-height: 122px; display: flex; flex-direction: column;
+    min-height: 140px; display: flex; flex-direction: column;
   }
   .card.is-today    { border:2px solid var(--today-bd); box-shadow:0 0 0 2px rgba(29,78,216,0.1); }
   .card.is-sunday   { background: var(--sun-bg); border-color: var(--sun-bd); }
@@ -279,7 +287,7 @@
     <div class="section-title" style="margin-bottom:0">Habit Tracker — Shade each box when you complete that day</div>
     <div class="habit-sub">May 4 → Sep 25, 2026 &nbsp;·&nbsp; 145 days</div>
   </div>
-  <div style="display:flex;gap:4px;align-items:flex-start;overflow-x:auto">
+  <div class="habit-inner">
     <div class="dow-labels">
       <div class="dow-lbl">Sun</div>
       <div class="dow-lbl">Mon</div>
@@ -289,7 +297,7 @@
       <div class="dow-lbl">Fri</div>
       <div class="dow-lbl">Sat</div>
     </div>
-    <div>
+    <div class="habit-grid-wrap">
       <div class="habit-month-row" id="habit-months"></div>
       <div class="habit-grid" id="habit-grid"></div>
     </div>
@@ -440,6 +448,13 @@ function getLec(arr, done) {
   return {ch:"Complete! ✓", lec:"—"};
 }
 
+// Get TWO consecutive lectures (for ×2 days)
+function getLec2(arr, done) {
+  let l1 = getLec(arr, done-1); // the one before current
+  let l2 = getLec(arr, done);   // the current one
+  return {l1, l2};
+}
+
 /* ── 12-WEEK / 15-WEEK OVERVIEW ── */
 const twGrid = document.getElementById('tw-grid');
 const numBlocks = 15;
@@ -475,33 +490,58 @@ while(cur<=gridEnd){ cells.push(new Date(cur)); cur.setDate(cur.getDate()+1); }
 const numCols = Math.ceil(cells.length/7);
 
 const monthRow = document.getElementById('habit-months');
-monthRow.style.gridTemplateColumns = `repeat(${numCols}, 13.5px)`;
-let lastMonth=-1;
-for(let col=0;col<numCols;col++){
-  let idx=col*7;
-  let lbl='';
-  if(idx<cells.length && cells[idx].getMonth()!==lastMonth){
-    lbl=MO[cells[idx].getMonth()];
-    lastMonth=cells[idx].getMonth();
-  }
-  let d=document.createElement('div');
-  d.className='hmonth'; d.textContent=lbl; d.style.width='13.5px';
-  monthRow.appendChild(d);
+const habitGrid = document.getElementById('habit-grid');
+
+// Build columns: each column = 1 week (7 days Sun-Sat)
+// Organize cells into columns
+let cols = [];
+let col = [];
+cells.forEach((dt,i)=>{
+  col.push(dt);
+  if(col.length===7){ cols.push(col); col=[]; }
+});
+if(col.length>0){
+  while(col.length<7) col.push(null);
+  cols.push(col);
 }
 
-const habitGrid = document.getElementById('habit-grid');
-habitGrid.style.gridTemplateColumns = `repeat(${numCols}, 11px)`;
-cells.forEach(dt=>{
-  let diff = Math.round((dt-BASE)/86400000)+1;
-  let inRange = diff>=S && diff<=E;
-  let isExt = diff>180 && diff<=E;
-  let dow = dt.getDay();
-  let cell = document.createElement('div');
-  if(!inRange) cell.className='hcell empty';
-  else if(dow===0) cell.className='hcell sun';
-  else if(isExt) cell.className='hcell ext';
-  else cell.className='hcell l0';
-  habitGrid.appendChild(cell);
+// Month labels
+const MO_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+let lastMo=-1;
+cols.forEach(col=>{
+  let lbl='';
+  let firstReal = col.find(d=>d!==null);
+  if(firstReal && firstReal.getMonth()!==lastMo){
+    lbl=MO[firstReal.getMonth()];
+    lastMo=firstReal.getMonth();
+  }
+  let cell=document.createElement('div');
+  cell.className='hmonth-cell';
+  cell.textContent=lbl;
+  monthRow.appendChild(cell);
+});
+
+// Build grid columns
+cols.forEach(colDays=>{
+  let colEl=document.createElement('div');
+  colEl.className='habit-col';
+  colDays.forEach(dt=>{
+    let cell=document.createElement('div');
+    if(!dt){
+      cell.className='hcell empty';
+    } else {
+      let diff=Math.round((dt-BASE)/86400000)+1;
+      let inRange=diff>=S&&diff<=E;
+      let isExt=diff>180&&diff<=E;
+      let dow=dt.getDay();
+      if(!inRange) cell.className='hcell empty';
+      else if(dow===0) cell.className='hcell sun';
+      else if(isExt) cell.className='hcell ext';
+      else cell.className='hcell l0';
+    }
+    colEl.appendChild(cell);
+  });
+  habitGrid.appendChild(colEl);
 });
 
 /* ── PLANNER CARDS ── */
@@ -542,13 +582,37 @@ function buildCard(d) {
   } else {
     inner='<div class="subj-rows">';
     if(alloc.p>0) {
-      inner+=`<div class="subj-row"><div class="sdot" style="background:#1d4ed8"></div><div class="sinfo"><div class="sch">${pi.ch}</div><div class="slec${alloc.p>1?' x2':''}">Lec ${pi.lec}${alloc.p>1?` <span style="color:#c2410c">(×2)</span>`:''}</div></div></div>`;
+      if(alloc.p===2){
+        let {l1,l2}=getLec2(PHY,cumP[idx]);
+        inner+=`<div class="subj-row"><div class="sdot" style="background:#1d4ed8;margin-top:1px"></div><div class="sinfo">
+          <div class="sch">${l1.ch}</div><div class="slec">Lec ${l1.lec}</div>
+          <div class="sch" style="margin-top:2px">${l2.ch}</div><div class="slec x2">Lec ${l2.lec}</div>
+        </div></div>`;
+      } else {
+        inner+=`<div class="subj-row"><div class="sdot" style="background:#1d4ed8"></div><div class="sinfo"><div class="sch">${pi.ch}</div><div class="slec">Lec ${pi.lec}</div></div></div>`;
+      }
     }
     if(alloc.m>0) {
-      inner+=`<div class="subj-row"><div class="sdot" style="background:#6d28d9"></div><div class="sinfo"><div class="sch">${mi.ch}</div><div class="slec${alloc.m>1?' x2':''}">Lec ${mi.lec}${alloc.m>1?` <span style="color:#c2410c">(×2)</span>`:''}</div></div></div>`;
+      if(alloc.m===2){
+        let {l1,l2}=getLec2(MATH,cumM[idx]);
+        inner+=`<div class="subj-row"><div class="sdot" style="background:#6d28d9;margin-top:1px"></div><div class="sinfo">
+          <div class="sch">${l1.ch}</div><div class="slec">Lec ${l1.lec}</div>
+          <div class="sch" style="margin-top:2px">${l2.ch}</div><div class="slec x2">Lec ${l2.lec}</div>
+        </div></div>`;
+      } else {
+        inner+=`<div class="subj-row"><div class="sdot" style="background:#6d28d9"></div><div class="sinfo"><div class="sch">${mi.ch}</div><div class="slec">Lec ${mi.lec}</div></div></div>`;
+      }
     }
     if(alloc.c>0) {
-      inner+=`<div class="subj-row"><div class="sdot" style="background:#047857"></div><div class="sinfo"><div class="sch">${ci.ch}</div><div class="slec${alloc.c>1?' x2':''}">Lec ${ci.lec}${alloc.c>1?` <span style="color:#c2410c">(×2)</span>`:''}</div></div></div>`;
+      if(alloc.c===2){
+        let {l1,l2}=getLec2(CHEM,cumC[idx]);
+        inner+=`<div class="subj-row"><div class="sdot" style="background:#047857;margin-top:1px"></div><div class="sinfo">
+          <div class="sch">${l1.ch}</div><div class="slec">Lec ${l1.lec}</div>
+          <div class="sch" style="margin-top:2px">${l2.ch}</div><div class="slec x2">Lec ${l2.lec}</div>
+        </div></div>`;
+      } else {
+        inner+=`<div class="subj-row"><div class="sdot" style="background:#047857"></div><div class="sinfo"><div class="sch">${ci.ch}</div><div class="slec">Lec ${ci.lec}</div></div></div>`;
+      }
     }
     inner+='</div>';
   }
