@@ -459,4 +459,189 @@ const CHEM=[
   {ch:"Ph: Redox Reaction",lecs:9,s:1},
   {ch:"Or: IUPAC Nomencl.",lecs:5,s:1},
   {ch:"Or: Isomerism",lecs:12,s:1},
-  {
+  {ch:"Or: G.O.C",lecs:16,s:1},
+  {ch:"Or: Hydrocarbons",lecs:23,s:1},
+  {ch:"In: Classification",lecs:7,s:1},
+  {ch:"In: Chemical Bonding",lecs:15,s:1},
+  {ch:"In: Hydrogen & Cpds",lecs:3,s:1},
+  {ch:"In: S-block Elem.",lecs:5,s:1},
+  {ch:"In: P-block Elem.",lecs:5,s:1},
+];
+
+const S=58,E=180,TOTAL=E-S+1;
+const BASE=new Date(2026,2,8); // Mar 8 2026 = Day 1
+const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function gd(d){let x=new Date(BASE);x.setDate(x.getDate()+d-1);return x;}
+
+// Updated 24 Lec/Week Pace Engine
+function getProgress(d) {
+  if (d < S) return {p:0, m:0, c:0};
+  let p=0,m=0,c=0;
+  for(let i=S; i<=d; i++){
+    let w=gd(i).getDay();
+    if(w===1){ p+=2; m+=2; c+=1; }
+    else if(w===2){ p+=1; m+=1; c+=1; }
+    else if(w===3){ p+=1; m+=1; c+=2; }
+    else if(w===4){ p+=1; m+=1; c+=1; }
+    else if(w===5){ p+=1; m+=1; c+=1; }
+    else if(w===6){ p+=2; m+=2; c+=2; }
+  }
+  // Cap at remaining totals: Phy:142, Math:150, Chem:134
+  return { p: Math.min(p, 142), m: Math.min(m, 150), c: Math.min(c, 134) }; 
+}
+
+function getLec(arr,rawDone){
+  if(rawDone<=0)return{ch:arr[0].ch,lec:arr[0].s};
+  let r=rawDone;
+  for(let ch of arr){if(r<=ch.lecs)return{ch:ch.ch,lec:(ch.s||1)+r-1};r-=ch.lecs;}
+  return{ch:"Complete!",lec:"—"};
+}
+
+/* ── 12-WEEK YEAR ── */
+const twGrid=document.getElementById('tw-grid');
+const weekSize=Math.ceil(TOTAL/12);
+
+function getChapterAt(dayOffset){
+  let curr = getProgress(S+dayOffset);
+  return {phy:getLec(PHY,curr.p).ch,math:getLec(MATH,curr.m).ch,chem:getLec(CHEM,curr.c).ch};
+}
+
+for(let w=0;w<12;w++){
+  let so=w*weekSize,eo=Math.min((w+1)*weekSize-1,TOTAL-1);
+  let sd=gd(S+so),ed=gd(S+eo);
+  let mid=getChapterAt(Math.floor((so+eo)/2));
+  let block=document.createElement('div');
+  block.className='tw-block'+(w===0?' active':'');
+  block.innerHTML=`<div class="tw-wnum">Block ${w+1}</div>
+    <div class="tw-dates">${sd.getDate()} ${MO[sd.getMonth()]} – ${ed.getDate()} ${MO[ed.getMonth()]}</div>
+    <div class="tw-goal">P: ${mid.phy}<br>M: ${mid.math}<br>C: ${mid.chem.replace(/Ph: |Or: |In: /,'')}</div>`;
+  twGrid.appendChild(block);
+}
+
+/* ── HABIT GRID (GitHub-style) ── */
+const startDt58 = gd(S); 
+const gridStartDt = new Date(startDt58);
+gridStartDt.setDate(gridStartDt.getDate() - startDt58.getDay()); 
+
+const endDt180 = gd(E); 
+const gridEndDt = new Date(endDt180);
+const daysToSat = (6 - endDt180.getDay() + 7) % 7;
+gridEndDt.setDate(gridEndDt.getDate() + daysToSat);
+
+let cells = [];
+let cur = new Date(gridStartDt);
+while(cur <= gridEndDt){
+  cells.push(new Date(cur));
+  cur.setDate(cur.getDate()+1);
+}
+
+const numCols = Math.ceil(cells.length / 7);
+const monthRow = document.getElementById('habit-months');
+monthRow.style.gridTemplateColumns = `repeat(${numCols}, 13.5px)`;
+
+let monthLabels = new Array(numCols).fill('');
+let lastMonth = -1;
+for(let col=0;col<numCols;col++){
+  let cellIdx = col * 7;
+  if(cellIdx < cells.length){
+    let dt = cells[cellIdx];
+    if(dt.getMonth() !== lastMonth){
+      monthLabels[col] = MO[dt.getMonth()];
+      lastMonth = dt.getMonth();
+    }
+  }
+}
+monthLabels.forEach(lbl=>{
+  let d=document.createElement('div');
+  d.className='hmonth';
+  d.textContent=lbl;
+  d.style.width='13.5px';
+  monthRow.appendChild(d);
+});
+
+const habitGrid = document.getElementById('habit-grid');
+habitGrid.style.gridTemplateColumns = `repeat(${numCols}, 11px)`;
+
+cells.forEach(dt=>{
+  let cell = document.createElement('div');
+  let diff = Math.round((dt - BASE) / 86400000) + 1;
+  let inRange = diff >= S && diff <= E;
+  let dow = dt.getDay();
+  let isSun = dow === 0;
+
+  if(!inRange){
+    cell.className = 'hcell empty';
+  } else if(isSun){
+    cell.className = 'hcell rest';
+  } else {
+    cell.className = 'hcell l0'; 
+  }
+  habitGrid.appendChild(cell);
+});
+
+/* ── PLANNER CARDS ── */
+function buildCard(d){
+  let dt=gd(d);
+  let dow=dt.getDay(),sun=dow===0,sat=dow===6,isStart=d===S;
+  let prev=getProgress(d-1),curr=getProgress(d);
+  let pp=curr.p-prev.p,pm=curr.m-prev.m,pc=curr.c-prev.c;
+  let pi=getLec(PHY,curr.p),mi=getLec(MATH,curr.m),ci=getLec(CHEM,curr.c);
+  
+  let cls='card'+(isStart?' is-today':sun?' is-sunday':sat?' is-saturday':'');
+  let badge=isStart?'<span class="badge b-start">START</span>'
+    :sun?'<span class="badge b-sun">REST</span>'
+    :sat?'<span class="badge b-sat">SAT</span>'
+    :'<span class="badge b-study">STUDY</span>';
+    
+  let inner='';
+  if(sun){
+    inner=`<div class="sun-content"><span class="sun-icon">◎</span><span>Rest · Revise</span><span style="font-size:7.5px;opacity:0.7">Catch up if needed</span></div>`;
+  } else {
+    inner='<div class="subj-rows">';
+    if(pp) inner+=`<div class="subj-row"><div class="sdot" style="background:#1d4ed8"></div><div class="sinfo"><div class="sch">${pi.ch}</div><div class="slec">Lec ${pi.lec}</div></div></div>`;
+    if(pm) inner+=`<div class="subj-row"><div class="sdot" style="background:#6d28d9"></div><div class="sinfo"><div class="sch">${mi.ch}</div><div class="slec">Lec ${mi.lec}</div></div></div>`;
+    if(pc) inner+=`<div class="subj-row"><div class="sdot" style="background:#047857"></div><div class="sinfo"><div class="sch">${ci.ch}</div><div class="slec">Lec ${ci.lec}</div></div></div>`;
+    inner+='</div>';
+  }
+  return `
+  <div class="${cls}">
+    <div class="card-top"><span class="card-day">Day ${d}</span>${badge}</div>
+    <div class="card-date">${WD[dow]}, ${dt.getDate()} ${MO[dt.getMonth()]} 2026</div>
+    ${inner}
+    <div class="write-area">
+      <div class="write-label">Notes</div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+      <div class="wline"></div>
+    </div>
+  </div>`;
+}
+
+const planner=document.getElementById('planner');
+let weekNum=0,weekDays=[];
+for(let d=S;d<=E;d++){
+  weekDays.push(d);
+  let dow=gd(d).getDay();
+  if(dow===6||d===E){
+    weekNum++;
+    let sd=gd(weekDays[0]),ed=gd(weekDays[weekDays.length-1]);
+    let blockIdx=Math.ceil((d-S+1)/weekSize);
+    let section=document.createElement('div');
+    section.className='week-section';
+    section.innerHTML=`
+      <div class="week-header">
+        <span class="wk-num">Week ${weekNum}</span>
+        <span class="wk-dates">${sd.getDate()} ${MO[sd.getMonth()]} – ${ed.getDate()} ${MO[ed.getMonth()]} 2026</span>
+        <div class="wk-line"></div>
+        <span class="wk-goal">12-wk block ${blockIdx} of 12</span>
+      </div>
+      <div class="week-grid">${weekDays.map(buildCard).join('')}</div>`;
+    planner.appendChild(section);
+    weekDays=[];
+  }
+}
+</script>
+</body>
+</html>
